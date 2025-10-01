@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+            margin: 0;
+        }
+        .login-container {
+            width: 300px;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+        input[type="text"], input[type="password"] {
+            width: 93%;
+            padding: 10px;
+            margin: 8px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            width: 100%;
+	    font-family: sans-serif;
+	    font-size: 20px;
+            padding: 10px;
+	    margin-bottom: 5px;
+            color: #fff;
+            background-color: #4CAF50;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+
+	.register-button {
+            background-color: #008CBA;
+            text-decoration: none;
+	    font-family: sans-serif;
+	    font-size: 20px;
+            display: block;
+            padding: 10px;
+            color: #fff;
+            border-radius: 4px;
+            margin-top: 8px;
+        }
+        .register-button:hover {
+            background-color: #007B9A;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h2>Login</h2>
+         <form id="loginForm" onsubmit="event.preventDefault(); login();">
+            <input type="text" id="username" name="username" placeholder="Username" required>
+            <input type="password" id="password" name="password" placeholder="Password" required>
+            <button type="submit">Login</button>
+        </form>
+        <a href="/adduser" class="register-button">Register now</a>
+    </div>
+
+    <script>
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const response = await fetch('/api/login', {
+    		method: 'POST',
+    		headers: { 'Content-Type': 'application/json' },
+    		body: JSON.stringify({ username, password })
+	});
+	
+	    console.log(response);	
+	    if (response.ok) {
+	    console.log("I AM IN THE RESPONSE.OK IF STATEMENT");
+            const homeResponse = await fetch('/home', {
+            	method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username, password})
+	    });
+            console.log("I AM HERE AFTER THE FETCH FOR /home");
+            const homeContent = await homeResponse.text();
+            
+            document.open(); 
+            document.write(homeContent); 
+            document.close(); 
+        } 	
+        }
+    </script>
+</body>
+</html>

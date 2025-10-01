@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Scroller</title>
+    <script src="https://cdn.dashjs.org/latest/dash.all.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            overflow-y: scroll;
+        }
+        #playerContainer {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .video-wrapper {
+            width: 80%;
+            max-width: 1200px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .video-wrapper.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        video {
+            width: 100%;
+            display: block;
+        }
+        #controlsContainer {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            z-index: 1000;
+        }
+        #playPauseBtn {
+            cursor: pointer;
+            padding: 10px 20px;
+            color: white;
+            background-color: #007BFF;
+            border: none;
+            border-radius: 8px;
+            transition: background-color 0.3s ease, transform 0.1s ease;
+            font-size: 16px;
+            text-align: center;
+            min-width: 100px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        #playPauseBtn:hover {
+            background-color: #0056b3;
+            transform: scale(1.05);
+        }
+        .controlBtn {
+            cursor: pointer;
+            padding: 10px 20px;
+            background-color: #007BFF;
+            color: white;
+            text-align: center;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s ease, transform 0.1s ease;
+            font-size: 16px;
+            min-width: 100px;
+        }
+        .controlBtn:hover {
+            background-color: #0056b3;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+    <div id="playerContainer"></div>
+    <div id="controlsContainer">
+        <div id="playPauseBtn">Play/Pause</div>
+        <button id="likeBtn" name = "like" class="controlBtn">Like</button>
+        <button id="dislikeBtn" name = "dislike" class="controlBtn">Dislike</button>
+    </div>
+
+    <script>
+        const playerContainer = document.getElementById('playerContainer');
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const likeBtn = document.getElementById('likeBtn');
+        const dislikeBtn = document.getElementById('dislikeBtn');
+        
+        let videos = [];
+        let currentIndex = 0;
+        const BATCH_SIZE = 10;
+        const players = new Map();
+        const createdWrappers = new Set(); // Track created wrappers by videoId
+        let isLoadingNewBatch = false;
+
+        async function fetchNewBatch() {
+            try {
+                const response = await fetch('/api/videos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ count: BATCH_SIZE })
+                });
+                const result = await response.json();
+                console.log("RESULT JSON", result);
+                if (result?.status === "OK" && Array.isArray(result.videos)) {
+                    return result.videos.map(video => video.id);
+                }
+                return [];
+            } catch (error) {
+                console.error("Error fetching new batch:", error);
+                return [];
+            }
+        }
+
+        function createVideoWrapper(videoId, index) {
+            // Check if wrapper already exists for this video
+            if (createdWrappers.has(videoId)) {
+                console.log(`Wrapper for video ${videoId} already exists`);
+                return players.get(index).wrapper;
+            }
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'video-wrapper';
+            wrapper.dataset.index = index;
+            wrapper.dataset.videoId = videoId; // Add videoId to wrapper for tracking
+            
+            const videoElement = document.createElement('video');
+            videoElement.controls = true;
+            
+            wrapper.appendChild(videoElement);
+            playerContainer.appendChild(wrapper);
+            
+            const playerInstance = dashjs.MediaPlayer().create();
+            playerInstance.initialize(videoElement, `/api/manifest/${videoId}`, false);
+            playerInstance.preload();
+            
+            players.set(index, {
+                element: videoElement,
+                wrapper: wrapper,
+                player: playerInstance,
+                videoId: videoId
+            });
+
+            createdWrappers.add(videoId); // Mark this wrapper as created
+            return wrapper;
+        }
+
+        function updateActiveWrapper(index) {
+            // Ensure we're not removing any wrappers, just updating visibility
+            document.querySelectorAll('.video-wrapper').forEach(wrapper => {
+                wrapper.classList.remove('active');
+            });
+            
+            const activeWrapper = players.get(index)?.wrapper;
+            if (activeWrapper) {
+                activeWrapper.classList.add('active');
+                const video = players.get(index).element;
+                
+                // Pause all other videos
+                players.forEach((playerData, idx) => {
+                    if (idx !== index && !playerData.element.paused) {
+                        playerData.element.pause();
+                    }
+                });
+
+                // Update play/pause button state
+                playPauseBtn.textContent = video.paused ? "Play" : "Pause";
+            }
+        }
+
+        async function initializeVideos() {
+            try {
+                await fetch('/api/view', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: '{{VIDEO_ID_FOR_VIEW}}' })
+                });
+
+                const initialVideos = await fetchNewBatch();
+                const videoIdInIV = "{{VIDEO_ID}}";
+                // videos=initialVideos;
+                console.log("A B BEFORE", initialVideos);
+                videos = ['{{VIDEO_ID}}', ...initialVideos];
+                //videos = [...new Set(['{{VIDEO_ID}}', ...initialVideos])];
+
+                
+                console.log("A BEFORE", videos);
+                // Create wrappers for all initial videos
+                videos.forEach((videoId, index) => {
+                    console.log("IN FOR EACH");
+                    createVideoWrapper(videoId, index);
+                });
+
+                console.log("A AFTER", videos);
+                // Activate first video
+                updateActiveWrapper(0);
+                const firstVideo = players.get(0).element;
+                firstVideo.play().catch(error => {
+                    console.error("Autoplay failed:", error);
+                });
+            } catch (error) {
+                console.error('Error during initialization:', error);
+            }
+        }
+
+        async function loadMoreVideos() {
+            if (!isLoadingNewBatch) {
+                isLoadingNewBatch = true;
+                const newVideos = await fetchNewBatch();
+                if (newVideos.length > 0) {
+                    const startIndex = videos.length;
+                    videos.push(...newVideos);
+                    
+                    // Create wrappers for new videos only if they don't exist
+                    newVideos.forEach((videoId, i) => {
+                        if (!createdWrappers.has(videoId)) {
+                            createVideoWrapper(videoId, startIndex + i);
+                        }
+                    });
+                }
+                isLoadingNewBatch = false;
+            }
+        }
+
+        let lastScrollTime = 0;
+        const scrollCooldown = 500;
+
+        window.addEventListener('wheel', async (event) => {
+            const now = Date.now();
+            if (now - lastScrollTime > scrollCooldown) {
+                if (event.deltaY > 0 && currentIndex < videos.length - 1) {
+                    // Scrolling down
+                    currentIndex++;
+                    updateActiveWrapper(currentIndex);
+                    
+                    // Load more videos if we're near the end
+                    if (currentIndex >= videos.length - 5) {
+                        await loadMoreVideos();
+                    }
+                } else if (event.deltaY < 0 && currentIndex > 0) {
+                    // Scrolling up
+                    currentIndex--;
+                    updateActiveWrapper(currentIndex);
+                }
+                
+                // Record view
+                await fetch('/api/view', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: videos[currentIndex] })
+                });
+                
+                // Update URL
+                history.replaceState(null, '', `/play/${videos[currentIndex]}`);
+                
+                lastScrollTime = now;
+            }
+        });
+
+        playPauseBtn.addEventListener('click', () => {
+            const currentVideo = players.get(currentIndex)?.element;
+            if (currentVideo) {
+                if (currentVideo.paused) {
+                    currentVideo.play();
+                    playPauseBtn.textContent = "Pause";
+                } else {
+                    currentVideo.pause();
+                    playPauseBtn.textContent = "Play";
+                }
+            }
+        });
+
+        likeBtn.addEventListener('click', () => likeDislikeVideo(videos[currentIndex], true));
+        dislikeBtn.addEventListener('click', () => likeDislikeVideo(videos[currentIndex], false));
+
+        function likeDislikeVideo(videoId, value) {
+            fetch('/api/like', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: videoId, value: value })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === "OK") {
+                    alert(`Video ${value ? "liked" : "disliked"} successfully!`);
+                } else {
+                    alert("Error: " + data.message);
+                }
+            })
+            .catch(error => console.error('Errors:', error));
+        }
+
+        initializeVideos();
+    </script>
+</body>
+</html>

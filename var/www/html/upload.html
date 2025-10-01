@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Upload Video</title>
+  <style>
+    /* General Styles */
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      background-color: #f9f9f9;
+    }
+    
+    /* Container */
+    #uploadForm {
+      background-color: #fff;
+      padding: 20px 30px;
+      border-radius: 8px;
+      box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+      max-width: 400px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    
+    /* Header */
+    h1 {
+      font-size: 24px;
+      color: #333;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    /* Labels */
+    label {
+      font-size: 14px;
+      color: #555;
+      margin-bottom: 5px;
+      display: block;
+    }
+    
+    /* Input Fields */
+    input[type="text"],
+    input[type="file"] {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 15px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    
+    /* Button */
+    button[type="submit"] {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      color: #fff;
+      background-color: #007bff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    button[type="submit"]:hover {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <form id="uploadForm">
+    <h1>Upload a Video</h1>
+    
+    <label for="author">Author:</label>
+    <input type="text" id="author" name="author" required>
+
+    <label for="title">Title:</label>
+    <input type="text" id="title" name="title" required>
+
+    <label for="description">Description:</label>
+    <input type="text" id="description" name="description" required>
+
+    <label for="mp4File">MP4 File:</label>
+    <input type="file" id="mp4File" name="mp4File" accept="video/mp4" required>
+
+    <button type="submit">Upload Video</button>
+  </form>
+
+  <script>
+    document.getElementById('uploadForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const form = document.getElementById('uploadForm');
+      const formData = new FormData(form);
+
+      try {
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+        
+        // const homeResponse = await fetch('/home', {
+        //   method: 'POST',
+        //   headers: {'Content-Type': 'application/json'},
+	      // });
+
+        // const homeContent = await homeResponse.text();
+            
+        // document.open(); 
+        // document.write(homeContent); 
+        // document.close(); 
+
+        const result = await response.json();
+
+        if (result.status === 'ERROR') {
+          //alert(`Error: ${result.message}`);
+          console.error(`ALERT! Error: ${result.message}`);
+        } else {
+          //alert(`Video uploaded successfully! Video ID: ${result.id}`);
+          console.log(`ALERT! Video uploaded successfully! Video ID: ${result.id}`);
+        }
+      } catch (error) {
+        console.error('Error uploading video:', error);
+        //alert('An unexpected error occurred while uploading the video.');
+      }
+    });
+  </script>
+  
+</body>
+</html>

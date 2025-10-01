@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TokTik</title>
+    <style>
+        .video-container {
+            display: flex;
+            flex-wrap: wrap;
+        }
+        .video-item {
+            margin: 10px;
+            text-align: center;
+        }
+        .thumbnail {
+            width: 320px;
+            height: 180px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Video List</h1>
+
+	
+    <button onclick="upload()">Upload</button>
+
+    <button onclick="logout()">Log Out</button>
+
+    <div class="video-container" id="video-container">
+
+    </div>
+
+    <script>
+        console.log("Anthonys server");
+        // fetch('/api/videos_for_home')
+        //     .then(response => response.json())
+        //     .then(videos => {
+        //         const videoContainer = document.getElementById('video-container');
+        //         videos.slice(0,10).forEach(videoId => {
+        //             const videoItem = document.createElement('div');
+        //             videoItem.classList.add('video-item');
+        //             videoItem.innerHTML = `
+        //                 <a href="/play/${videoId}">
+        //                     <img class="thumbnail" src="/api/thumbnail/${videoId}" alt="${videoId} Thumbnail">
+        //                     <p>${videoId}</p>
+        //                 </a>
+        //             `;
+        //             videoContainer.appendChild(videoItem);
+        //         });
+        //     })
+        //     .catch(error => console.error('Error loading videos:', error));
+
+        fetch('/api/videos', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ count: 10 }) // Request the first 10 videos
+        })
+            .then(response => response.json())
+            .then(result => {
+                if (result && result.status === "OK" && Array.isArray(result.videos)) {
+                    const videoContainer = document.getElementById('video-container');
+                    result.videos.forEach(video => {
+                        const videoId = video.id; // Assuming each video object has an 'id' field
+                        const videoItem = document.createElement('div');
+                        videoItem.classList.add('video-item');
+                        videoItem.innerHTML = `
+                            <a href="/play/${videoId}">
+                                <img class="thumbnail" src="/api/thumbnail/${videoId}" alt="${videoId} Thumbnail">
+                                <p>${videoId}</p>
+                            </a>
+                        `;
+                        videoContainer.appendChild(videoItem);
+                    });
+                } else {
+                    console.error('Unexpected response format:', result);
+                }
+            })
+            .catch(error => console.error('Error loading videos:', error));
+
+	async function upload() {
+
+         const page = await fetch('/upload', {
+
+            method: 'GET'
+         });
+         
+         const pageContent = await page.text();
+         document.open();
+         document.write(pageContent);
+         document.close();
+
+        }
+
+	async function logout() {
+
+	  const response = await fetch('/api/logout', {method: 'POST'});
+	}
+
+    
+    </script>
+</body>
+</html>
+
